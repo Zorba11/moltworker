@@ -1,12 +1,12 @@
 #!/bin/bash
-# Startup script for Moltbot in Cloudflare Sandbox
+# Startup script for Moltbot in Cloudflare Sandbox (v29)
 # This script:
-# 1. Restores config from R2 backup if available
+# 1. Restores config + workspace from R2 backup if available
 # 2. Configures moltbot from environment variables
-# 3. Starts a background sync to backup config to R2
-# 4. Starts the gateway
+# 3. Starts the gateway
 
 set -e
+set -x
 
 # Check if clawdbot gateway is already running - bail early if so
 # Note: CLI is still named "clawdbot" until upstream renames it
@@ -33,37 +33,29 @@ mkdir -p "$CONFIG_DIR"
 # ============================================================
 # Check if R2 backup exists by looking for clawdbot.json
 # The BACKUP_DIR may exist but be empty if R2 was just mounted
-# Note: backup structure is $BACKUP_DIR/clawdbot/ and $BACKUP_DIR/skills/
+# Note: backup structure is $BACKUP_DIR/clawdbot/ and $BACKUP_DIR/workspace/
 
 # Helper function to check if R2 backup is newer than local
 should_restore_from_r2() {
     local R2_SYNC_FILE="$BACKUP_DIR/.last-sync"
     local LOCAL_SYNC_FILE="$CONFIG_DIR/.last-sync"
-    
+
     # If no R2 sync timestamp, don't restore
     if [ ! -f "$R2_SYNC_FILE" ]; then
         echo "No R2 sync timestamp found, skipping restore"
         return 1
     fi
-    
+
     # If no local sync timestamp, restore from R2
     if [ ! -f "$LOCAL_SYNC_FILE" ]; then
         echo "No local sync timestamp, will restore from R2"
         return 0
     fi
-    
-    # Compare timestamps
-    R2_TIME=$(cat "$R2_SYNC_FILE" 2>/dev/null)
-    LOCAL_TIME=$(cat "$LOCAL_SYNC_FILE" 2>/dev/null)
-    
-    echo "R2 last sync: $R2_TIME"
-    echo "Local last sync: $LOCAL_TIME"
-    
-    # Convert to epoch seconds for comparison
-    R2_EPOCH=$(date -d "$R2_TIME" +%s 2>/dev/null || echo "0")
-    LOCAL_EPOCH=$(date -d "$LOCAL_TIME" +%s 2>/dev/null || echo "0")
-    
-    if [ "$R2_EPOCH" -gt "$LOCAL_EPOCH" ]; then
+
+    # Compare file modification times (portable, no date -d needed)
+    # s3fs-mounted files may not have real timestamps, so -nt is safer
+    # than trying to parse the file contents with date -d
+    if [ "$R2_SYNC_FILE" -nt "$LOCAL_SYNC_FILE" ]; then
         echo "R2 backup is newer, will restore"
         return 0
     else
@@ -94,14 +86,22 @@ else
     echo "R2 not mounted, starting fresh"
 fi
 
-# Restore skills from R2 backup if available (only if R2 is newer)
-SKILLS_DIR="/root/clawd/skills"
-if [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ]; then
+# Restore full workspace from R2 backup if available
+WORKSPACE_DIR="/root/clawd"
+if [ -d "$BACKUP_DIR/workspace" ] && [ "$(ls -A $BACKUP_DIR/workspace 2>/dev/null)" ]; then
     if should_restore_from_r2; then
-        echo "Restoring skills from $BACKUP_DIR/skills..."
-        mkdir -p "$SKILLS_DIR"
-        cp -a "$BACKUP_DIR/skills/." "$SKILLS_DIR/"
-        echo "Restored skills from R2 backup"
+        echo "Restoring workspace from $BACKUP_DIR/workspace..."
+        mkdir -p "$WORKSPACE_DIR"
+        cp -a "$BACKUP_DIR/workspace/." "$WORKSPACE_DIR/"
+        echo "Restored workspace from R2 backup"
+    fi
+elif [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ]; then
+    # Legacy: skills-only backup format
+    if should_restore_from_r2; then
+        echo "Restoring skills from $BACKUP_DIR/skills... (legacy format)"
+        mkdir -p "$WORKSPACE_DIR/skills"
+        cp -a "$BACKUP_DIR/skills/." "$WORKSPACE_DIR/skills/"
+        echo "Restored skills from R2 backup (legacy)"
     fi
 fi
 
@@ -197,7 +197,7 @@ if (process.env.DISCORD_BOT_TOKEN) {
     config.channels.discord.token = process.env.DISCORD_BOT_TOKEN;
     config.channels.discord.enabled = true;
     config.channels.discord.dm = config.channels.discord.dm || {};
-    config.channels.discord.dm.policy = process.env.DISCORD_DM_POLICY || 'pairing';
+    config.channels.discord.dm.policy = process.env.DISCORD_DM_POLICY || 'open';
 }
 
 // Slack configuration
