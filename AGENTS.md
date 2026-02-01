@@ -67,13 +67,13 @@ stdout.toLowerCase().includes('approved')
 ## Commands
 
 ```bash
-npm test              # Run tests (vitest)
-npm run test:watch    # Run tests in watch mode
-npm run build         # Build worker + client
-npm run deploy        # Build and deploy to Cloudflare
-npm run dev           # Vite dev server
-npm run start         # wrangler dev (local worker)
-npm run typecheck     # TypeScript check
+pnpm test              # Run tests (vitest)
+pnpm run test:watch    # Run tests in watch mode
+pnpm run build         # Build worker + client
+pnpm run deploy        # Build and deploy to Cloudflare
+pnpm run dev           # Vite dev server
+pnpm run start         # wrangler dev (local worker)
+pnpm run typecheck     # TypeScript check
 ```
 
 ## Testing
@@ -144,10 +144,10 @@ Browser
 ## Local Development
 
 ```bash
-npm install
+pnpm install
 cp .dev.vars.example .dev.vars
 # Edit .dev.vars with your ANTHROPIC_API_KEY
-npm run start
+pnpm run start
 ```
 
 ### Environment Variables
@@ -225,10 +225,10 @@ See [Moltbot docs](https://docs.molt.bot/gateway/configuration) for full schema.
 
 ```bash
 # View live logs
-npx wrangler tail
+pnpm exec wrangler tail
 
 # Check secrets
-npx wrangler secret list
+pnpm exec wrangler secret list
 ```
 
 Enable debug routes with `DEBUG_ROUTES=true` and check `/debug/processes`.

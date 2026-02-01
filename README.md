@@ -41,23 +41,23 @@ _Cloudflare Sandboxes are available on the [Workers Paid plan](https://dash.clou
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Set your API key (direct Anthropic access)
-npx wrangler secret put ANTHROPIC_API_KEY
+pnpm exec wrangler secret put ANTHROPIC_API_KEY
 
 # Or use AI Gateway instead (see "Optional: Cloudflare AI Gateway" below)
-# npx wrangler secret put AI_GATEWAY_API_KEY
-# npx wrangler secret put AI_GATEWAY_BASE_URL
+# pnpm exec wrangler secret put AI_GATEWAY_API_KEY
+# pnpm exec wrangler secret put AI_GATEWAY_BASE_URL
 
 # Generate and set a gateway token (required for remote access)
 # Save this token - you'll need it to access the Control UI
 export MOLTBOT_GATEWAY_TOKEN=$(openssl rand -hex 32)
 echo "Your gateway token: $MOLTBOT_GATEWAY_TOKEN"
-echo "$MOLTBOT_GATEWAY_TOKEN" | npx wrangler secret put MOLTBOT_GATEWAY_TOKEN
+echo "$MOLTBOT_GATEWAY_TOKEN" | pnpm exec wrangler secret put MOLTBOT_GATEWAY_TOKEN
 
 # Deploy
-npm run deploy
+ppnpm run deploy
 ```
 
 After deploying, open the Control UI with your token:
@@ -101,10 +101,10 @@ After enabling Cloudflare Access, set the secrets so the worker can validate JWT
 
 ```bash
 # Your Cloudflare Access team domain (e.g., "myteam.cloudflareaccess.com")
-npx wrangler secret put CF_ACCESS_TEAM_DOMAIN
+pnpm exec wrangler secret put CF_ACCESS_TEAM_DOMAIN
 
 # The Application Audience (AUD) tag from your Access application that you copied in the step above
-npx wrangler secret put CF_ACCESS_AUD
+pnpm exec wrangler secret put CF_ACCESS_AUD
 ```
 
 You can find your team domain in the [Zero Trust Dashboard](https://one.dash.cloudflare.com/) under **Settings** > **Custom Pages** (it's the subdomain before `.cloudflareaccess.com`).
@@ -112,7 +112,7 @@ You can find your team domain in the [Zero Trust Dashboard](https://one.dash.clo
 ### 3. Redeploy
 
 ```bash
-npm run deploy
+pnpm run deploy
 ```
 
 Now visit `/_admin/` and you'll be prompted to authenticate via Cloudflare Access before accessing the admin UI.
@@ -180,13 +180,13 @@ By default, moltbot data (configs, paired devices, conversation history) is lost
 
 ```bash
 # R2 Access Key ID
-npx wrangler secret put R2_ACCESS_KEY_ID
+pnpm exec wrangler secret put R2_ACCESS_KEY_ID
 
 # R2 Secret Access Key
-npx wrangler secret put R2_SECRET_ACCESS_KEY
+pnpm exec wrangler secret put R2_SECRET_ACCESS_KEY
 
 # Your Cloudflare Account ID
-npx wrangler secret put CF_ACCOUNT_ID
+pnpm exec wrangler secret put CF_ACCOUNT_ID
 ```
 
 To find your Account ID: Go to the [Cloudflare Dashboard](https://dash.cloudflare.com/), click the three dots menu next to your account name, and select "Copy Account ID".
@@ -216,7 +216,7 @@ By default, the sandbox container stays alive indefinitely (`SANDBOX_SLEEP_AFTER
 To reduce costs for infrequently used deployments, you can configure the container to sleep after a period of inactivity:
 
 ```bash
-npx wrangler secret put SANDBOX_SLEEP_AFTER
+pnpm exec wrangler secret put SANDBOX_SLEEP_AFTER
 # Enter: 10m (or 1h, 30m, etc.)
 ```
 
@@ -246,23 +246,23 @@ Debug endpoints are available at `/debug/*` when enabled (requires `DEBUG_ROUTES
 ### Telegram
 
 ```bash
-npx wrangler secret put TELEGRAM_BOT_TOKEN
-npm run deploy
+pnpm exec wrangler secret put TELEGRAM_BOT_TOKEN
+pnpm run deploy
 ```
 
 ### Discord
 
 ```bash
-npx wrangler secret put DISCORD_BOT_TOKEN
-npm run deploy
+pnpm exec wrangler secret put DISCORD_BOT_TOKEN
+pnpm run deploy
 ```
 
 ### Slack
 
 ```bash
-npx wrangler secret put SLACK_BOT_TOKEN
-npx wrangler secret put SLACK_APP_TOKEN
-npm run deploy
+pnpm exec wrangler secret put SLACK_BOT_TOKEN
+pnpm exec wrangler secret put SLACK_APP_TOKEN
+pnpm run deploy
 ```
 
 ## Optional: Browser Automation (CDP)
@@ -274,21 +274,21 @@ This worker includes a Chrome DevTools Protocol (CDP) shim that enables browser 
 1. Set a shared secret for authentication:
 
 ```bash
-npx wrangler secret put CDP_SECRET
+pnpm exec wrangler secret put CDP_SECRET
 # Enter a secure random string
 ```
 
 2. Set your worker's public URL:
 
 ```bash
-npx wrangler secret put WORKER_URL
+pnpm exec wrangler secret put WORKER_URL
 # Enter: https://your-worker.workers.dev
 ```
 
 3. Redeploy:
 
 ```bash
-npm run deploy
+pnpm run deploy
 ```
 
 ### Endpoints
@@ -340,17 +340,17 @@ You'll find the base URL on the Overview tab of your newly created gateway. At t
 
 ```bash
 # Your provider's API key (e.g., Anthropic API key)
-npx wrangler secret put AI_GATEWAY_API_KEY
+pnpm exec wrangler secret put AI_GATEWAY_API_KEY
 
 # Your AI Gateway endpoint URL
-npx wrangler secret put AI_GATEWAY_BASE_URL
+pnpm exec wrangler secret put AI_GATEWAY_BASE_URL
 # Enter: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
 ```
 
 4. Redeploy:
 
 ```bash
-npm run deploy
+pnpm run deploy
 ```
 
 The `AI_GATEWAY_*` variables take precedence over `ANTHROPIC_*` if both are set.
@@ -396,9 +396,9 @@ OpenClaw in Cloudflare Sandbox uses multiple authentication layers:
 
 ## Troubleshooting
 
-**`npm run dev` fails with an `Unauthorized` error:** You need to enable Cloudflare Containers in the [Containers dashboard](https://dash.cloudflare.com/?to=/:account/workers/containers)
+**`pnpm run dev` fails with an `Unauthorized` error:** You need to enable Cloudflare Containers in the [Containers dashboard](https://dash.cloudflare.com/?to=/:account/workers/containers)
 
-**Gateway fails to start:** Check `npx wrangler secret list` and `npx wrangler tail`
+**Gateway fails to start:** Check `pnpm exec wrangler secret list` and `pnpm exec wrangler tail`
 
 **Config changes not working:** Edit the `# Build cache bust:` comment in `Dockerfile` and redeploy
 

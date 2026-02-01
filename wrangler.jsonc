@@ -30,7 +30,7 @@
   ],
   // Build command for vite
   "build": {
-    "command": "npm run build",
+    "command": "pnpm run build",
   },
   // Container configuration for the Moltbot sandbox
   "containers": [
