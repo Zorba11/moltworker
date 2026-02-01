@@ -9,13 +9,18 @@ import type { MoltbotEnv } from '../types';
 export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   const envVars: Record<string, string> = {};
 
-  // Normalize the base URL by removing trailing slashes
+  // Pass Moonshot API key directly (for Kimi K2.5)
+  if (env.MOONSHOT_API_KEY) envVars.MOONSHOT_API_KEY = env.MOONSHOT_API_KEY;
+
+  // AI Gateway configuration (for Cloudflare AI Gateway users)
+  // Skip gateway mapping when MOONSHOT_API_KEY handles the provider directly,
+  // to prevent old AI_GATEWAY secrets (pointing at moonshot) from creating
+  // a broken anthropic provider config.
   const normalizedBaseUrl = env.AI_GATEWAY_BASE_URL?.replace(/\/+$/, '');
   const isOpenAIGateway = normalizedBaseUrl?.endsWith('/openai');
+  const skipGatewayMapping = !!env.MOONSHOT_API_KEY && !isOpenAIGateway;
 
-  // AI Gateway vars take precedence
-  // Map to the appropriate provider env var based on the gateway endpoint
-  if (env.AI_GATEWAY_API_KEY) {
+  if (env.AI_GATEWAY_API_KEY && !skipGatewayMapping) {
     if (isOpenAIGateway) {
       envVars.OPENAI_API_KEY = env.AI_GATEWAY_API_KEY;
     } else {
@@ -32,9 +37,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   }
 
   // Pass base URL (used by start-moltbot.sh to determine provider)
-  if (normalizedBaseUrl) {
+  if (normalizedBaseUrl && !skipGatewayMapping) {
     envVars.AI_GATEWAY_BASE_URL = normalizedBaseUrl;
-    // Also set the provider-specific base URL env var
     if (isOpenAIGateway) {
       envVars.OPENAI_BASE_URL = normalizedBaseUrl;
     } else {

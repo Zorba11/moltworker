@@ -1,11 +1,13 @@
 #!/bin/bash
-# Startup script for Moltbot in Cloudflare Sandbox (v29)
+# Startup script for Moltbot in Cloudflare Sandbox (v30)
 # This script:
 # 1. Restores config + workspace from R2 backup if available
 # 2. Configures moltbot from environment variables
 # 3. Starts the gateway
+#
+# NOTE: No "set -e" — restore/config steps are best-effort.
+# If they fail, the gateway should still start with defaults.
 
-set -e
 set -x
 
 # Check if clawdbot gateway is already running - bail early if so
@@ -195,9 +197,11 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 if (process.env.DISCORD_BOT_TOKEN) {
     config.channels.discord = config.channels.discord || {};
     config.channels.discord.token = process.env.DISCORD_BOT_TOKEN;
+    delete config.channels.discord.botToken; // Clean up invalid key from old backup
     config.channels.discord.enabled = true;
     config.channels.discord.dm = config.channels.discord.dm || {};
-    config.channels.discord.dm.policy = process.env.DISCORD_DM_POLICY || 'open';
+    config.channels.discord.dm.policy = process.env.DISCORD_DM_POLICY || 'pairing';
+    delete config.channels.discord.dm.allowFrom; // Clean up invalid key from old deploy
 }
 
 // Slack configuration
@@ -208,60 +212,86 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     config.channels.slack.enabled = true;
 }
 
-// Base URL override (e.g., for Cloudflare AI Gateway)
-// Usage: Set AI_GATEWAY_BASE_URL or ANTHROPIC_BASE_URL to your endpoint like:
-//   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
-//   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai
+// ============================================================
+// Configure model providers independently based on available API keys
+// ============================================================
+config.models = config.models || {};
+config.models.providers = config.models.providers || {};
+config.agents.defaults.models = config.agents.defaults.models || {};
+
+// ---- Provider: Moonshot/Kimi (OpenAI-compatible) ----
+if (process.env.MOONSHOT_API_KEY) {
+    console.log('Configuring Kimi K2.5 (Moonshot) provider');
+    config.models.providers.openai = {
+        baseUrl: 'https://api.moonshot.ai/v1',
+        api: 'openai-completions',
+        apiKey: process.env.MOONSHOT_API_KEY,
+        models: [
+            { id: 'kimi-k2.5-preview', name: 'Kimi K2.5', contextWindow: 262144 },
+        ]
+    };
+    config.agents.defaults.models['openai/kimi-k2.5-preview'] = { alias: 'Kimi K2.5' };
+}
+
+// ---- Provider: Anthropic/Claude ----
+if (process.env.ANTHROPIC_API_KEY) {
+    console.log('Configuring Anthropic/Claude provider');
+    config.models.providers.anthropic = {
+        api: 'anthropic-messages',
+        apiKey: process.env.ANTHROPIC_API_KEY,
+        models: [
+            { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', contextWindow: 200000 },
+            { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', contextWindow: 200000 },
+        ]
+    };
+    config.agents.defaults.models['anthropic/claude-opus-4-5-20251101'] = { alias: 'Opus 4.5' };
+    config.agents.defaults.models['anthropic/claude-sonnet-4-5-20250929'] = { alias: 'Sonnet 4.5' };
+}
+
+// ---- Fallback: AI Gateway / OpenAI provider (for Cloudflare AI Gateway users) ----
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');
 
-if (isOpenAI) {
-    // Create custom openai provider config with baseUrl override
-    // Omit apiKey so moltbot falls back to OPENAI_API_KEY env var
-    console.log('Configuring OpenAI provider with base URL:', baseUrl);
-    config.models = config.models || {};
-    config.models.providers = config.models.providers || {};
+if (baseUrl && isOpenAI && !config.models.providers.openai) {
+    console.log('Configuring OpenAI provider via AI Gateway:', baseUrl);
     config.models.providers.openai = {
         baseUrl: baseUrl,
         api: 'openai-responses',
         models: [
             { id: 'gpt-5.2', name: 'GPT-5.2', contextWindow: 200000 },
             { id: 'gpt-5', name: 'GPT-5', contextWindow: 200000 },
-            { id: 'gpt-4.5-preview', name: 'GPT-4.5 Preview', contextWindow: 128000 },
         ]
     };
-    // Add models to the allowlist so they appear in /models
-    config.agents.defaults.models = config.agents.defaults.models || {};
     config.agents.defaults.models['openai/gpt-5.2'] = { alias: 'GPT-5.2' };
     config.agents.defaults.models['openai/gpt-5'] = { alias: 'GPT-5' };
-    config.agents.defaults.models['openai/gpt-4.5-preview'] = { alias: 'GPT-4.5' };
-    config.agents.defaults.model.primary = 'openai/gpt-5.2';
-} else if (baseUrl) {
-    console.log('Configuring Anthropic provider with base URL:', baseUrl);
-    config.models = config.models || {};
-    config.models.providers = config.models.providers || {};
+} else if (baseUrl && !isOpenAI && !config.models.providers.anthropic) {
+    console.log('Configuring Anthropic provider via AI Gateway:', baseUrl);
     const providerConfig = {
         baseUrl: baseUrl,
         api: 'anthropic-messages',
         models: [
             { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', contextWindow: 200000 },
             { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', contextWindow: 200000 },
-            { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', contextWindow: 200000 },
         ]
     };
-    // Include API key in provider config if set (required when using custom baseUrl)
     if (process.env.ANTHROPIC_API_KEY) {
         providerConfig.apiKey = process.env.ANTHROPIC_API_KEY;
     }
     config.models.providers.anthropic = providerConfig;
-    // Add models to the allowlist so they appear in /models
-    config.agents.defaults.models = config.agents.defaults.models || {};
     config.agents.defaults.models['anthropic/claude-opus-4-5-20251101'] = { alias: 'Opus 4.5' };
     config.agents.defaults.models['anthropic/claude-sonnet-4-5-20250929'] = { alias: 'Sonnet 4.5' };
-    config.agents.defaults.models['anthropic/claude-haiku-4-5-20251001'] = { alias: 'Haiku 4.5' };
+}
+
+// ---- Set primary model (prefer Kimi as default — cheaper) ----
+if (process.env.MOONSHOT_API_KEY) {
+    config.agents.defaults.model.primary = 'openai/kimi-k2.5-preview';
+} else if (process.env.ANTHROPIC_API_KEY) {
+    config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5-20251101';
+} else if (baseUrl && isOpenAI) {
+    config.agents.defaults.model.primary = 'openai/gpt-5.2';
+} else if (baseUrl) {
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5-20251101';
 } else {
-    // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
 }
 
@@ -285,10 +315,20 @@ rm -f "$CONFIG_DIR/gateway.lock" 2>/dev/null || true
 BIND_MODE="lan"
 echo "Dev mode: ${CLAWDBOT_DEV_MODE:-false}, Bind mode: $BIND_MODE"
 
+# Run gateway with output capture (no exec) so we can log the crash reason
+GATEWAY_LOG="/tmp/gateway.log"
+echo "=== Gateway starting at $(date -Iseconds) ===" > "$GATEWAY_LOG"
+
 if [ -n "$CLAWDBOT_GATEWAY_TOKEN" ]; then
     echo "Starting gateway with token auth..."
-    exec clawdbot gateway --port 18789 --verbose --allow-unconfigured --bind "$BIND_MODE" --token "$CLAWDBOT_GATEWAY_TOKEN"
+    clawdbot gateway --port 18789 --verbose --allow-unconfigured --bind "$BIND_MODE" --token "$CLAWDBOT_GATEWAY_TOKEN" >> "$GATEWAY_LOG" 2>&1
 else
     echo "Starting gateway with device pairing (no token)..."
-    exec clawdbot gateway --port 18789 --verbose --allow-unconfigured --bind "$BIND_MODE"
+    clawdbot gateway --port 18789 --verbose --allow-unconfigured --bind "$BIND_MODE" >> "$GATEWAY_LOG" 2>&1
 fi
+
+GATEWAY_EXIT=$?
+echo "=== Gateway exited with code $GATEWAY_EXIT at $(date -Iseconds) ===" >> "$GATEWAY_LOG"
+echo "=== Last 50 lines of gateway output ===" >&2
+tail -50 "$GATEWAY_LOG" >&2
+exit $GATEWAY_EXIT

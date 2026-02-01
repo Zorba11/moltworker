@@ -14,10 +14,12 @@ RUN apt-get update && apt-get install -y xz-utils ca-certificates rsync \
 # Install pnpm globally
 RUN npm install -g pnpm
 
-# Install moltbot (CLI is still named clawdbot until upstream renames)
+# Install moltbot gateway (upgraded to openclaw with native Kimi K2.5 support)
 # Pin to specific version for reproducible builds
-RUN npm install -g clawdbot@2026.1.24-3 \
-    && clawdbot --version
+# Symlink clawdbot → openclaw for backward compatibility (start-moltbot.sh, Worker code)
+RUN npm install -g openclaw@2026.1.30 \
+    && openclaw --version \
+    && ln -s /usr/local/bin/openclaw /usr/local/bin/clawdbot
 
 # Create moltbot directories (paths still use clawdbot until upstream renames)
 # Templates are stored in /root/.clawdbot-templates for initialization
@@ -27,7 +29,7 @@ RUN mkdir -p /root/.clawdbot \
     && mkdir -p /root/clawd/skills
 
 # Copy startup script
-ARG CACHE_BUST=2026-01-30-v29-fix-date-d-crash
+ARG CACHE_BUST=2026-01-31-v42-openclaw-upgrade
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh
 
