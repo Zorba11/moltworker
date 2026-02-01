@@ -97,7 +97,7 @@ pnpm run start              # wrangler dev (local worker)
 - Node.js: 22.13.1 (required by openclaw)
 - Gateway binary: `openclaw@2026.1.30` (symlinked as `clawdbot` for backward compat)
 - Gateway port: 18789
-- Config path: `/root/.clawdbot/clawdbot.json`
+- Config path: `/root/.openclaw/openclaw.json` (symlinked from `/root/.clawdbot`)
 - Workspace: `/root/clawd`
 - R2 mount: `/data/moltbot`
 

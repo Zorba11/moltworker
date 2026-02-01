@@ -17,9 +17,11 @@ if pgrep -f "clawdbot gateway" > /dev/null 2>&1; then
     exit 0
 fi
 
-# Paths (clawdbot paths are used internally - upstream hasn't renamed yet)
-CONFIG_DIR="/root/.clawdbot"
-CONFIG_FILE="$CONFIG_DIR/clawdbot.json"
+# Paths — openclaw@2026.1.30 uses ~/.openclaw/openclaw.json
+# We symlink the old clawdbot path for backward compat with R2 backups
+CONFIG_DIR="/root/.openclaw"
+CONFIG_FILE="$CONFIG_DIR/openclaw.json"
+LEGACY_CONFIG_DIR="/root/.clawdbot"
 TEMPLATE_DIR="/root/.clawdbot-templates"
 TEMPLATE_FILE="$TEMPLATE_DIR/moltbot.json.template"
 BACKUP_DIR="/data/moltbot"
@@ -27,8 +29,16 @@ BACKUP_DIR="/data/moltbot"
 echo "Config directory: $CONFIG_DIR"
 echo "Backup directory: $BACKUP_DIR"
 
-# Create config directory
+# Create config directory and symlink legacy path
 mkdir -p "$CONFIG_DIR"
+if [ ! -L "$LEGACY_CONFIG_DIR" ] && [ ! -d "$LEGACY_CONFIG_DIR" ]; then
+    ln -s "$CONFIG_DIR" "$LEGACY_CONFIG_DIR"
+elif [ -d "$LEGACY_CONFIG_DIR" ] && [ ! -L "$LEGACY_CONFIG_DIR" ]; then
+    # Migrate existing clawdbot config to new path
+    cp -a "$LEGACY_CONFIG_DIR/." "$CONFIG_DIR/" 2>/dev/null || true
+    rm -rf "$LEGACY_CONFIG_DIR"
+    ln -s "$CONFIG_DIR" "$LEGACY_CONFIG_DIR"
+fi
 
 # ============================================================
 # RESTORE FROM R2 BACKUP
@@ -70,6 +80,10 @@ if [ -f "$BACKUP_DIR/clawdbot/clawdbot.json" ]; then
     if should_restore_from_r2; then
         echo "Restoring from R2 backup at $BACKUP_DIR/clawdbot..."
         cp -a "$BACKUP_DIR/clawdbot/." "$CONFIG_DIR/"
+        # Rename clawdbot.json -> openclaw.json if needed
+        if [ -f "$CONFIG_DIR/clawdbot.json" ] && [ ! -f "$CONFIG_DIR/openclaw.json" ]; then
+            mv "$CONFIG_DIR/clawdbot.json" "$CONFIG_DIR/openclaw.json"
+        fi
         # Copy the sync timestamp to local so we know what version we have
         cp -f "$BACKUP_DIR/.last-sync" "$CONFIG_DIR/.last-sync" 2>/dev/null || true
         echo "Restored config from R2 backup"
@@ -138,7 +152,7 @@ fi
 node << EOFNODE
 const fs = require('fs');
 
-const configPath = '/root/.clawdbot/clawdbot.json';
+const configPath = '/root/.openclaw/openclaw.json';
 console.log('Updating config at:', configPath);
 let config = {};
 

@@ -21,9 +21,10 @@ RUN npm install -g openclaw@2026.1.30 \
     && openclaw --version \
     && ln -s /usr/local/bin/openclaw /usr/local/bin/clawdbot
 
-# Create moltbot directories (paths still use clawdbot until upstream renames)
-# Templates are stored in /root/.clawdbot-templates for initialization
-RUN mkdir -p /root/.clawdbot \
+# Create moltbot directories
+# openclaw@2026.1.30 uses ~/.openclaw/, symlink legacy ~/.clawdbot/ for R2 backup compat
+RUN mkdir -p /root/.openclaw \
+    && ln -s /root/.openclaw /root/.clawdbot \
     && mkdir -p /root/.clawdbot-templates \
     && mkdir -p /root/clawd \
     && mkdir -p /root/clawd/skills
