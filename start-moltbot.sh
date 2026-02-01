@@ -233,18 +233,18 @@ config.models = config.models || {};
 config.models.providers = config.models.providers || {};
 config.agents.defaults.models = config.agents.defaults.models || {};
 
-// ---- Provider: Moonshot/Kimi (OpenAI-compatible) ----
+// ---- Provider: Moonshot/Kimi (native support in openclaw@2026.1.30) ----
 if (process.env.MOONSHOT_API_KEY) {
     console.log('Configuring Kimi K2.5 (Moonshot) provider');
-    config.models.providers.openai = {
+    config.models.providers.moonshot = {
         baseUrl: 'https://api.moonshot.ai/v1',
         api: 'openai-completions',
         apiKey: process.env.MOONSHOT_API_KEY,
         models: [
-            { id: 'kimi-k2.5-preview', name: 'Kimi K2.5', contextWindow: 262144 },
+            { id: 'kimi-k2.5', name: 'Kimi K2.5', contextWindow: 262144 },
         ]
     };
-    config.agents.defaults.models['openai/kimi-k2.5-preview'] = { alias: 'Kimi K2.5' };
+    config.agents.defaults.models['moonshot/kimi-k2.5'] = { alias: 'Kimi K2.5' };
 }
 
 // ---- Provider: Anthropic/Claude ----
@@ -299,7 +299,7 @@ if (baseUrl && isOpenAI && !config.models.providers.openai) {
 
 // ---- Set primary model (prefer Kimi as default — cheaper) ----
 if (process.env.MOONSHOT_API_KEY) {
-    config.agents.defaults.model.primary = 'openai/kimi-k2.5-preview';
+    config.agents.defaults.model.primary = 'moonshot/kimi-k2.5';
 } else if (process.env.ANTHROPIC_API_KEY) {
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5-20251101';
 } else if (baseUrl && isOpenAI) {
