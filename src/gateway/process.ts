@@ -52,6 +52,33 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
   // R2 is used as a backup - the startup script will restore from it on boot
   await mountR2Storage(sandbox, env);
 
+  // Debug: read crash logs from the most recent failed gateway process
+  try {
+    const allProcesses = await sandbox.listProcesses();
+    const failedGateway = allProcesses
+      .filter(p => (p.command.includes('start-moltbot.sh') || p.command.includes('clawdbot gateway'))
+        && !p.command.includes('clawdbot devices') && !p.command.includes('clawdbot --version')
+        && (p.status === 'failed' || p.status === 'completed'))
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())[0];
+    if (failedGateway) {
+      const crashLogs = await failedGateway.getLogs();
+      console.log('[CRASH-DEBUG] Last failed gateway:', failedGateway.id, 'exitCode:', failedGateway.exitCode);
+      if (crashLogs.stdout) console.log('[CRASH-DEBUG] stdout:', crashLogs.stdout);
+      if (crashLogs.stderr) console.log('[CRASH-DEBUG] stderr:', crashLogs.stderr);
+    }
+  } catch (e) {
+    console.log('[CRASH-DEBUG] Could not read crash logs:', e);
+  }
+
+  // Also try to read /tmp/gateway.log from container (v33+ script captures output there)
+  try {
+    const logProc = await sandbox.startProcess('tail -100 /tmp/gateway.log 2>/dev/null || echo "No gateway log"');
+    const logOutput = await logProc.getLogs();
+    if (logOutput.stdout) console.log('[CRASH-DEBUG] /tmp/gateway.log:', logOutput.stdout);
+  } catch (e) {
+    // ignore
+  }
+
   // Check if Moltbot is already running or starting
   const existingProcess = await findExistingMoltbotProcess(sandbox);
   if (existingProcess) {
