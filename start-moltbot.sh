@@ -237,6 +237,7 @@ if (process.env.MOONSHOT_API_KEY) {
 if (process.env.ANTHROPIC_API_KEY) {
     console.log('Configuring Anthropic/Claude provider');
     config.models.providers.anthropic = {
+        baseUrl: process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
         api: 'anthropic-messages',
         apiKey: process.env.ANTHROPIC_API_KEY,
         models: [
