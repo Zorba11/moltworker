@@ -263,6 +263,24 @@ if (process.env.ANTHROPIC_API_KEY) {
     config.agents.defaults.models['anthropic/claude-sonnet-4-5-20250929'] = { alias: 'Sonnet 4.5' };
 }
 
+// ---- Provider: OpenAI (direct API key) ----
+if (process.env.OPENAI_API_KEY && !config.models.providers.openai) {
+    console.log('Configuring OpenAI provider');
+    config.models.providers.openai = {
+        baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+        api: 'openai-responses',
+        apiKey: process.env.OPENAI_API_KEY,
+        models: [
+            { id: 'o3', name: 'o3', contextWindow: 200000 },
+            { id: 'gpt-4.1', name: 'GPT-4.1', contextWindow: 128000 },
+            { id: 'o4-mini', name: 'o4-mini', contextWindow: 200000 },
+        ]
+    };
+    config.agents.defaults.models['openai/o3'] = { alias: 'o3' };
+    config.agents.defaults.models['openai/gpt-4.1'] = { alias: 'GPT-4.1' };
+    config.agents.defaults.models['openai/o4-mini'] = { alias: 'o4-mini' };
+}
+
 // ---- Fallback: AI Gateway / OpenAI provider (for Cloudflare AI Gateway users) ----
 const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
 const isOpenAI = baseUrl.endsWith('/openai');

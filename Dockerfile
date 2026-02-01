@@ -30,7 +30,7 @@ RUN mkdir -p /root/.openclaw \
     && mkdir -p /root/clawd/skills
 
 # Copy startup script
-ARG CACHE_BUST=2026-02-01-v44-fix-moonshot-provider
+ARG CACHE_BUST=2026-02-01-v45-add-openai-provider
 COPY start-moltbot.sh /usr/local/bin/start-moltbot.sh
 RUN chmod +x /usr/local/bin/start-moltbot.sh
 
