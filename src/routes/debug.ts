@@ -347,6 +347,7 @@ debug.get('/env', async (c) => {
     has_gateway_token: !!c.env.MOLTBOT_GATEWAY_TOKEN,
     has_discord_token: !!c.env.DISCORD_BOT_TOKEN,
     has_telegram_token: !!c.env.TELEGRAM_BOT_TOKEN,
+    has_fal_key: !!c.env.FAL_API_KEY,
     has_r2_access_key: !!c.env.R2_ACCESS_KEY_ID,
     has_r2_secret_key: !!c.env.R2_SECRET_ACCESS_KEY,
     has_cf_account_id: !!c.env.CF_ACCOUNT_ID,
@@ -363,7 +364,7 @@ debug.get('/container-config', async (c) => {
   const sandbox = c.get('sandbox');
   
   try {
-    const proc = await sandbox.startProcess('cat /root/.clawdbot/clawdbot.json');
+    const proc = await sandbox.startProcess('cat /root/.openclaw/openclaw.json');
     
     let attempts = 0;
     while (attempts < 10) {

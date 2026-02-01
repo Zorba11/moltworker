@@ -160,6 +160,12 @@ describe('buildEnvVars', () => {
     expect(result.OPENAI_API_KEY).toBeUndefined();
   });
 
+  it('includes FAL_API_KEY when set', () => {
+    const env = createMockEnv({ FAL_API_KEY: 'fal-test-key' });
+    const result = buildEnvVars(env);
+    expect(result.FAL_API_KEY).toBe('fal-test-key');
+  });
+
   it('handles multiple trailing slashes in AI_GATEWAY_BASE_URL', () => {
     const env = createMockEnv({
       AI_GATEWAY_API_KEY: 'sk-gateway-key',

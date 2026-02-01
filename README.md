@@ -381,6 +381,7 @@ The `AI_GATEWAY_*` variables take precedence over `ANTHROPIC_*` if both are set.
 | `SLACK_APP_TOKEN` | No | Slack app token |
 | `CDP_SECRET` | No | Shared secret for CDP endpoint authentication (see [Browser Automation](#optional-browser-automation-cdp)) |
 | `WORKER_URL` | No | Public URL of the worker (required for CDP) |
+| `FAL_API_KEY` | No | FAL API key for video/image generation skills |
 
 ## Security Considerations
 
